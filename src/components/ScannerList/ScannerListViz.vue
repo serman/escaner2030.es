@@ -104,6 +104,13 @@
         ></TagToSubtopicElement>
       </g>
     </svg>
+    <a
+      href="#"
+      v-if="hasReadMore && selectedTab === 'etiquetas'"
+      @click.prevent="readMoreActive = !readMoreActive"
+    >
+      {{ readMoreActive ? 'Ver menos' : 'Ver todas las etiquetas' }}
+    </a>
   </div>
 </template>
 
@@ -139,8 +146,7 @@ const props = defineProps({
 
 const emits = defineEmits(['update:mouseOverElement', 'update:clickedElement']);
 const POSITIONS = {
-  interTopic: 24,
-  fontSize: 12,
+  interTopic: 28,
 };
 
 // Main function:
@@ -194,8 +200,10 @@ watchEffect(() => {
     );
     if (clickedArrayLevel1.length > 0) {
       grouped = grouped.filter((element) =>
-        clickedArrayLevel1.find(
-          (clickedElement) => clickedElement.level1 === element.level1
+        clickedArrayLevel1.find((clickedElement) =>
+          element.children.some(
+            (child) => child.level1 === clickedElement.level1
+          )
         )
       );
     }
@@ -328,12 +336,22 @@ function expandSubTopic(group) {
   group.expanded = !group.expanded;
   updatePositionsSubtopicsWithTags(allSubtopicsWithTags.value);
 }
+const MAX_ITEMS = 30;
+
+const hasReadMore = computed(() => {
+  return tagsGroupedByName.value.length > MAX_ITEMS;
+});
+
+const readMoreActive = ref(false);
 
 const canvasHeight = computed(() => {
   if (selectedTab.value === 'etiquetas') {
-    const lastItem =
-      tagsGroupedByName.value[tagsGroupedByName.value.length - 1];
-
+    let lastItemIndex = readMoreActive.value
+      ? tagsGroupedByName.value.length - 1
+      : MAX_ITEMS;
+    if (hasReadMore.value === false)
+      lastItemIndex = tagsGroupedByName.value.length - 1;
+    const lastItem = tagsGroupedByName.value[lastItemIndex];
     return max([
       300,
       lastItem.y +

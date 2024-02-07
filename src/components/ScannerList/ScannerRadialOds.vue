@@ -1,7 +1,7 @@
 <template>
   <div class="relative">
-    <svg class="radialView" :width="availableWidth" :height="canvasHeight">
-      <g :transform="`translate(${availableWidth / 2}, ${availableWidth / 2})`">
+    <svg class="radialView" :width="width" :height="canvasHeight">
+      <g :transform="`translate(${width / 2}, ${canvasHeight / 2})`">
         <path
           v-for="d in dataHierarchy.descendants().filter((d) => d.depth > 0)"
           :key="d.name"
@@ -41,12 +41,33 @@
         }"
       >
         <div v-if="selectedSubtopic">
-          <div>{{ selectedSubtopic.parent.tag }}</div>
-          <div>{{ selectedSubtopic.data.name }}</div>
-          <div>
-            {{ selectedSubtopic.value }}
-            {{ selectedSubtopic.value == 1 ? 'aparicion' : 'apariciones' }} de
-            tags relacionados
+          <div class="tooltip-content">
+            <div class="codes-indicators">
+              <div
+                class="ods-number"
+                :style="{
+                  'background-color': selectedSubtopic.data.color,
+                }"
+              >
+                {{ selectedSubtopic.data.level1 }}
+              </div>
+              <div
+                v-if="selectedSubtopic.depth > 1"
+                class="meta-number"
+                :style="{
+                  'background-color': selectedSubtopic.data.color,
+                }"
+              >
+                {{ selectedSubtopic.data.level2 }}
+              </div>
+            </div>
+            <div class="codes-labels">
+              <div>{{ selectedSubtopic.parent.tag }}</div>
+              <div>{{ selectedSubtopic.data.name }}</div>
+            </div>
+            <div class="tag-count">
+              {{ selectedSubtopic.value }}
+            </div>
           </div>
         </div>
       </div>
@@ -86,8 +107,11 @@ const margin = 40;
 
 const emits = defineEmits(['update:mouseOverElement', 'update:clickedElement']);
 
+const width = computed(() => {
+  return Math.min(props.availableWidth, 500);
+});
 const canvasHeight = computed(() => {
-  return props.availableWidth;
+  return width.value;
 });
 
 function getBaseOdsList() {
@@ -188,13 +212,20 @@ const dataHierarchy = computed(() => {
 });
 
 // build chart:
-const radius = {
-  inner: 45,
-  level1: 105,
-  level2: 135,
-  level3: 180,
-};
-const radiusArray = [radius.inner, radius.level1, radius.level2, radius.level3];
+const radius = computed(() => {
+  return {
+    inner: ((45 / 180) * width.value) / 2,
+    level1: ((105 / 180) * width.value) / 2,
+    level2: ((135 / 180) * width.value) / 2,
+    level3: ((180 / 180) * width.value) / 2,
+  };
+});
+const radiusArray = computed(() => [
+  radius.value.inner,
+  radius.value.level1,
+  radius.value.level2,
+  radius.value.level3,
+]);
 
 const arc = d3
   .arc()
@@ -205,10 +236,10 @@ const arc = d3
     return d.x1;
   })
   .innerRadius(function (d) {
-    return radiusArray[d.depth - 1];
+    return radiusArray.value[d.depth - 1];
   })
   .outerRadius(function (d) {
-    return radiusArray[d.depth];
+    return radiusArray.value[d.depth];
   });
 
 function showText(d) {
@@ -234,6 +265,7 @@ const selectedSubtopic = ref(null);
 const tooltipPosition = ref({ x: 0, y: 0 });
 
 function onMouseOver(event, d) {
+  console.log(d);
   selectedSubtopic.value = d;
   tooltipPosition.value = { x: event.pageX, y: event.pageY };
   emits('update:mouseOverElement', {
@@ -336,7 +368,7 @@ path.hovered {
 
 path.active {
   filter: brightness(1.2);
-  stroke: #111;
+  stroke: rgba(0, 0, 0, 0.1);
   stroke-width: 2px;
 }
 
@@ -344,7 +376,63 @@ path.active {
   transition: all 0.3s ease;
   background-color: #222;
   color: white;
-  padding: 8px;
+  padding: 16px;
+  .tooltip-content {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 16px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+  }
+
+  .codes-indicators {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+  }
+  .codes-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    font-weight: 600;
+    max-width: 400px;
+  }
+
+  .ods-number {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    justify-content: center; /* align horizontal */
+    align-items: center; /* align vertical */
+    line-height: 32px;
+  }
+  .meta-number {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    justify-content: center; /* align horizontal */
+    align-items: center; /* align vertical */
+    border-radius: 100%;
+    line-height: 32px;
+  }
+  .tag-count {
+    width: 48px;
+    height: 48px;
+    border-radius: 100%;
+    border-color: white;
+    border-style: dashed;
+    padding: 8px;
+    text-align: center;
+    font-weight: bold;
+    line-height: 30px;
+  }
 }
 
 .hoveredOut,
